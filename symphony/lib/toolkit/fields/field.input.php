@@ -1,0 +1,503 @@
+<?php
+
+/**
+ * @package toolkit
+ * @see https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/input/text
+ */
+
+/**
+ * A simple Input field that essentially maps to HTML's `<input type="text" />
+ */
+class FieldInput extends Field implements ExportableField, ImportableField
+{
+    public function __construct()
+    {
+        parent::__construct();
+        $this->_name = __('Text Input');
+        $this->_required = true;
+
+        $this->set('required', 'no');
+    }
+
+    /*-------------------------------------------------------------------------
+        Definition:
+    -------------------------------------------------------------------------*/
+
+    public function canFilter()
+    {
+        return true;
+    }
+
+    public function canPrePopulate()
+    {
+        return true;
+    }
+
+    public function isSortable()
+    {
+        return true;
+    }
+
+    public function allowDatasourceOutputGrouping()
+    {
+        return true;
+    }
+
+    public function allowDatasourceParamOutput()
+    {
+        return true;
+    }
+
+    public function fetchValidationPresets() {
+        return [];
+    }
+
+    private static $typeMap = [
+        '/^\w(?:\.?[\w%+-]+)*@\w(?:[\w-]*\.)+?[a-z]{2,}$/i' => 'email',
+        '/^[^\s:\/?#]+:(?:\/{2,3})?[^\s.\/?#]+(?:\.[^\s.\/?#]+)*(?:\/?[^\s?#]*\??[^\s?#]*(#[^\s#]*)?)?$/' => 'url',
+        '/^-?(?:\d+(?:\.\d+)?|\.\d+)$/i' => 'number'
+    ];
+
+    /*-------------------------------------------------------------------------
+        Setup:
+    -------------------------------------------------------------------------*/
+
+    public function createTable()
+    {
+        return Symphony::Database()->query(
+            "CREATE TABLE IF NOT EXISTS `tbl_entries_data_" . $this->get('id') . "` (
+              `id` int(11) unsigned NOT null auto_increment,
+              `entry_id` int(11) unsigned NOT null,
+              `handle` varchar(200) default null,
+              `value` varchar(200) default null,
+              PRIMARY KEY  (`id`),
+              UNIQUE KEY `entry_id` (`entry_id`),
+              KEY `handle` (`handle`),
+              KEY `value` (`value`)
+            ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;"
+        );
+    }
+
+    /*-------------------------------------------------------------------------
+        Utilities:
+    -------------------------------------------------------------------------*/
+
+    private function __applyValidationRules($data)
+    {
+        $rule = $this->get('validator');
+
+        return ($rule ? General::validateString($data, $rule) : true);
+    }
+
+    private function __replaceAmpersands($value)
+    {
+        return preg_replace('/&(?!(#[0-9]+|#x[0-9a-f]+|amp|lt|gt);)/i', '&amp;', trim($value));
+    }
+
+    /*-------------------------------------------------------------------------
+        Settings:
+    -------------------------------------------------------------------------*/
+
+    public function setFromPOST(array $settings = array())
+    {
+        parent::setFromPOST($settings);
+
+        if ( $this->get('validator') === '' ) {
+            $this->remove('validator');
+        }
+        if ( $this->get('placeholder') === '' ) {
+            $this->remove('placeholder');
+        }
+    }
+
+    public function displaySettingsPanel(XMLElement &$wrapper, $errors = null)
+    {
+        parent::displaySettingsPanel($wrapper, $errors);
+
+        // Validation rule
+        // The old validation rules should no longer appear because users should select the new HTML5 input types
+        #$this->buildValidationSelect($wrapper, $this->get('validator'), 'fields['.$this->get('sortorder').'][validator]', 'input', $errors);
+        $validation = new XMLElement('label', __('Validation Rule <i>optional / legacy</i>'));
+        $input = Widget::input('fields['.$this->get('sortorder').'][validator]', $this->get('validator'), 'text');
+        $validation->appendChild($input);
+
+        $wrapper->appendChild($validation);
+
+        $hint = new XMLElement('p', __('Custom validation patterns are deprecated. Use HTML5 input types instead.'));
+        $hint->setAttribute('class', 'help');
+        $wrapper->appendChild($hint);
+
+        // Placeholder
+        $placeholder = new XMLElement('label', __('Placeholder <i>optional</i>'));
+        $input = Widget::input('fields['.$this->get('sortorder').'][placeholder]', $this->get('placeholder'), 'text');
+        $input->setAttribute('maxlength', '36');
+        $placeholder->appendChild($input);
+
+        $wrapper->appendChild($placeholder);
+
+        $hint = new XMLElement('p', __('For the value and additional attributes see <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/input/text" target="_blank" rel="noopener">MDN Web Docs</a>.'));
+        $hint->setAttribute('class', 'help');
+        $wrapper->appendChild($hint);
+
+        // Requirements and table display
+        $this->appendStatusFooter($wrapper);
+    }
+
+    public function commit()
+    {
+        if (!parent::commit()) {
+            return false;
+        }
+
+        $id = $this->get('id');
+
+        if ($id === false) {
+            return false;
+        }
+
+        $fields = array('validator'=>null);
+        $fields['validator'] = ($fields['validator'] == 'custom' ? null : $this->get('validator'));
+        $fields['placeholder'] = $this->get('placeholder') ?? null;
+
+        return FieldManager::saveSettings($id, $fields);
+    }
+
+    /*-------------------------------------------------------------------------
+        Publish:
+    -------------------------------------------------------------------------*/
+
+    public function displayPublishPanel(XMLElement &$wrapper, $data = null, $flagWithError = null, $fieldnamePrefix = null, $fieldnamePostfix = null, $entry_id = null)
+    {
+        $value = General::sanitize(isset($data['value']) ? $data['value'] : null);
+        $label = Widget::Label($this->get('label'));
+
+        if ($this->get('required') !== 'yes') {
+            $label->appendChild(new XMLElement('i', __('Optional')));
+        }
+
+        $validator = $this->get('validator');
+        $type = self::$typeMap[$validator] ?? 'text';
+
+        $input = Widget::Input('fields'.$fieldnamePrefix.'['.$this->get('element_name').']'.$fieldnamePostfix, (strlen($value) != 0 ? $value : null), $type);
+        if ( $this->get('required') === 'yes' ) {
+            $input->setAttribute('required', 'required');
+        }
+        if ( $this->get('placeholder') !== null ) {
+            $input->setAttribute('placeholder', $this->get('placeholder'));
+        }
+
+        $label->appendChild($input);
+
+        if ($flagWithError != null) {
+            $wrapper->appendChild(Widget::Error($label, $flagWithError));
+        } else {
+            $wrapper->appendChild($label);
+        }
+    }
+
+    public function checkPostFieldData($data, &$message, $entry_id = null)
+    {
+        $message = null;
+
+        if (is_array($data) && isset($data['value'])) {
+            $data = $data['value'];
+        }
+
+        if ($this->get('required') === 'yes' && strlen(trim($data)) == 0) {
+            $message = __('‘%s’ is a required field.', array($this->get('label')));
+            return self::__MISSING_FIELDS__;
+        }
+
+        if (!$this->__applyValidationRules($data)) {
+            $message = __('‘%s’ contains invalid data. Please check the contents.', array($this->get('label')));
+            return self::__INVALID_FIELDS__;
+        }
+
+        return self::__OK__;
+    }
+
+    public function processRawFieldData($data, &$status, &$message = null, $simulate = false, $entry_id = null)
+    {
+        $status = self::__OK__;
+
+        if (strlen(trim($data)) == 0) {
+            return array();
+        }
+
+        $result = array(
+            'value' => $data
+        );
+
+        $result['handle'] = Lang::createHandle($result['value']);
+
+        /*
+         * If cleanup of emojis leads to an empty handle and to avoid null as handle,
+         * the placeholder "entry" will set as handle.
+         * by tiloschroeder
+         */
+        if (empty($result['handle'])) {
+            $result['handle'] = 'entry';
+        }
+
+        /*
+         * Automatic handle incrementation
+         * by tiloschroeder
+         * To avoid collisions, the handle will be extended as follows:
+         * `slug`, `slug-1`, `slug-2`...
+         *
+         * This incrementation only takes effect if the input field is
+         * defined as the first field (sortorder = 0) within its section.
+         *
+         * All other input fields in the same section generate their handle
+         * without uniqueness checks or modification (pure data fields).
+         */
+        if ((int)$this->get('sortorder') === 0 && (int)$this->get('parent_section') > 0) {
+            $result['handle'] = General::incrementHandle($result['handle'], $this->get('id'), $entry_id);
+        }
+
+        return $result;
+    }
+
+    /*-------------------------------------------------------------------------
+        Output:
+    -------------------------------------------------------------------------*/
+
+    public function appendFormattedElement(XMLElement &$wrapper, $data, $encode = false, $mode = null, $entry_id = null)
+    {
+        $data['value'] = $data['value'] ?? null;
+        $data['handle'] = $data['handle'] ?? null;
+
+        $value = $data['value'];
+
+        if ($encode === true) {
+            $value = General::sanitize($value);
+        } else {
+            if (!General::validateXML($data['value'], $errors, false, new XsltProcess)) {
+                $value = html_entity_decode($data['value'], ENT_QUOTES, 'UTF-8');
+                $value = $this->__replaceAmpersands($value);
+
+                if (!General::validateXML($value, $errors, false, new XsltProcess)) {
+                    $value = General::sanitize($data['value']);
+                }
+            }
+        }
+
+        $wrapper->appendChild(
+            new XMLElement($this->get('element_name'), $value, array('handle' => $data['handle']))
+        );
+    }
+
+    public function getExampleFormMarkup()
+    {
+        $label = new XMLElement('label', $this->get('label'));
+        if ($this->get('required') === 'yes') {
+            $mark = new XMLElement('span', '*');
+            $mark->setAttribute('aria-label', 'Required field');
+            $mark->setAttribute('class', 'required-mark');
+            $label->appendChild($mark);
+        }
+
+        $validator = $this->get('validator');
+        $type = self::$typeMap[$validator] ?? 'text';
+
+        $input = Widget::input('fields['.$this->get('element_name').']', null, $type);
+        if ( $this->get('required') === 'yes' ) {
+            $input->setAttribute('required', 'required');
+        }
+        if ( $this->get('placeholder') !== null ) {
+            $input->setAttribute('placeholder', $this->get('placeholder'));
+        }
+
+        $label->appendChild($input);
+
+        return $label;
+    }
+
+    /*-------------------------------------------------------------------------
+        Import:
+    -------------------------------------------------------------------------*/
+
+    public function getImportModes()
+    {
+        return array(
+            'getValue' =>       ImportableField::STRING_VALUE,
+            'getPostdata' =>    ImportableField::ARRAY_VALUE
+        );
+    }
+
+    public function prepareImportValue($data, $mode, $entry_id = null)
+    {
+        $message = $status = null;
+        $modes = (object)$this->getImportModes();
+
+        if ($mode === $modes->getValue) {
+            return $data;
+        } elseif ($mode === $modes->getPostdata) {
+            return $this->processRawFieldData($data, $status, $message, true, $entry_id);
+        }
+
+        return null;
+    }
+
+    /*-------------------------------------------------------------------------
+        Export:
+    -------------------------------------------------------------------------*/
+
+    /**
+     * Return a list of supported export modes for use with `prepareExportValue`.
+     *
+     * @return array
+     */
+    public function getExportModes()
+    {
+        return array(
+            'getHandle' =>      ExportableField::HANDLE,
+            'getUnformatted' => ExportableField::UNFORMATTED,
+            'getPostdata' =>    ExportableField::POSTDATA
+        );
+    }
+
+    /**
+     * Give the field some data and ask it to return a value using one of many
+     * possible modes.
+     *
+     * @param mixed $data
+     * @param integer $mode
+     * @param integer $entry_id
+     * @return string|null
+     */
+    public function prepareExportValue($data, $mode, $entry_id = null)
+    {
+        $modes = (object)$this->getExportModes();
+
+        // Export handles:
+        if ($mode === $modes->getHandle) {
+            if (isset($data['handle'])) {
+                return $data['handle'];
+            } elseif (isset($data['value'])) {
+                return Lang::createHandle($data['value']);
+            }
+
+            // Export unformatted:
+        } elseif ($mode === $modes->getUnformatted || $mode === $modes->getPostdata) {
+            return isset($data['value'])
+                ? $data['value']
+                : null;
+        }
+
+        return null;
+    }
+
+    /*-------------------------------------------------------------------------
+        Filtering:
+    -------------------------------------------------------------------------*/
+
+    public function buildDSRetrievalSQL($data, &$joins, &$where, $andOperation = false)
+    {
+        $field_id = $this->get('id');
+
+        if (self::isFilterRegex($data[0])) {
+            $this->buildRegexSQL($data[0], array('value', 'handle'), $joins, $where);
+        } elseif (self::isFilterSQL($data[0])) {
+            $this->buildFilterSQL($data[0], array('value', 'handle'), $joins, $where);
+        } elseif ($andOperation) {
+            foreach ($data as $value) {
+                $this->_key++;
+                $value = $this->cleanValue($value);
+                $joins .= "
+                    LEFT JOIN
+                        `tbl_entries_data_{$field_id}` AS t{$field_id}_{$this->_key}
+                        ON (e.id = t{$field_id}_{$this->_key}.entry_id)
+                ";
+                $where .= "
+                    AND (
+                        t{$field_id}_{$this->_key}.value = '{$value}'
+                        OR t{$field_id}_{$this->_key}.handle = '{$value}'
+                    )
+                ";
+            }
+        } else {
+            if (!is_array($data)) {
+                $data = array($data);
+            }
+
+            foreach ($data as &$value) {
+                $value = $this->cleanValue($value);
+            }
+
+            $this->_key++;
+            $data = implode("', '", $data);
+            $joins .= "
+                LEFT JOIN
+                    `tbl_entries_data_{$field_id}` AS t{$field_id}_{$this->_key}
+                    ON (e.id = t{$field_id}_{$this->_key}.entry_id)
+            ";
+            $where .= "
+                AND (
+                    t{$field_id}_{$this->_key}.value IN ('{$data}')
+                    OR t{$field_id}_{$this->_key}.handle IN ('{$data}')
+                )
+            ";
+        }
+
+        return true;
+    }
+
+    /*-------------------------------------------------------------------------
+        Sorting:
+    -------------------------------------------------------------------------*/
+
+    public function buildSortingSQL(&$joins, &$where, &$sort, $order = 'ASC')
+    {
+        if ($this->isRandomOrder($order)) {
+            $sort = 'ORDER BY RAND()';
+        } else {
+            $sort = sprintf(
+                'ORDER BY (
+                    SELECT %s
+                    FROM tbl_entries_data_%d AS `ed`
+                    WHERE entry_id = e.id
+                ) %s, `e`.`id` %s',
+                '`ed`.value',
+                $this->get('id'),
+                $order,
+                $order
+            );
+        }
+    }
+
+    public function buildSortingSelectSQL($sort, $order = 'ASC')
+    {
+        return null;
+    }
+
+    /*-------------------------------------------------------------------------
+        Grouping:
+    -------------------------------------------------------------------------*/
+
+    public function groupRecords($records)
+    {
+        if (!is_array($records) || empty($records)) {
+            return;
+        }
+
+        $groups = array($this->get('element_name') => array());
+
+        foreach ($records as $r) {
+            $data = $r->getData($this->get('id'));
+            $value = General::sanitize($data['value']);
+
+            if (!isset($groups[$this->get('element_name')][$data['handle']])) {
+                $groups[$this->get('element_name')][$data['handle']] = array(
+                    'attr' => array('handle' => $data['handle'], 'value' => $value),
+                    'records' => array(),
+                    'groups' => array()
+                );
+            }
+
+            $groups[$this->get('element_name')][$data['handle']]['records'][] = $r;
+        }
+
+        return $groups;
+    }
+}

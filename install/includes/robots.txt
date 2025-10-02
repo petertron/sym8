@@ -1,0 +1,7 @@
+###
+#   robots.txt
+#   for <!-- DOMAIN -->
+###
+
+User-agent: *
+Allow: /

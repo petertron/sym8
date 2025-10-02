@@ -1,0 +1,35 @@
+{
+    "name": "sym8-io/sym8",
+    "version": "2.84.0",
+    "description": "Sym8 is a modern, XML/XSLT-powered CMS built on SymphonyCMS.",
+    "homepage": "https://sym8.io",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Sym8 Maintainer",
+            "email": "hello@sym8.io"
+        }
+    ],
+    "support": {
+        "email": "hello@sym8.io",
+        "issues": "https://github.com/sym8-io/sym8/issues",
+        "docs": "https://sym8.io/docs/"
+    },
+    "require-dev": {
+        "squizlabs/php_codesniffer": "2.*"
+    },
+    "minimum-stability": "stable",
+    "autoload": {
+        "classmap": [
+            "symphony/content",
+            "symphony/lib",
+            "symphony/template",
+            "install"
+        ],
+        "files": [
+            "symphony/lib/boot/func.utilities.php",
+            "symphony/lib/boot/defines.php",
+            "symphony/lib/toolkit/util.validators.php"
+        ]
+    }
+}
