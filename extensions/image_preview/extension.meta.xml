@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<extension id="image_preview" status="released" xmlns="http://symphony-cms.com/schemas/extension/1.0">
+    <name>Image Preview</name>
+    <description>Replaces the textual link to the image with the real image</description>
+    <repo type="github">https://github.com/sym8-io/sym8</repo>
+    <types>
+        <type>Interface</type>
+        <type>Field</type>
+        <type>Preview</type>
+    </types>
+    <authors>
+        <author>
+            <name github="sym8-io">Sym8</name>
+            <website>https://sym8.io/</website>
+        </author>
+    </authors>
+    <releases>
+        <release version="2.4.1" date="2025-05-12" min="2.3" max="2.x.x">
+            - Change charset to `utf8mb4`
+        </release>
+        <release version="2.4.0" date="2017-11-13" min="2.3" max="2.x.x">
+            - Add support for multi-upload field
+        </release>
+        <release version="2.3.3" date="2017-03-22" min="2.3" max="2.x.x">
+            - Supported on PHP 7
+            - Fixed parameters to fit the parent method
+        </release>
+        <release version="2.3.2" date="2015-09-28" min="2.3" max="2.6.x">
+            - Added missing .field-multilingual_upload selector
+        </release>
+        <release version="2.3.1" date="2015-08-10" min="2.3" max="2.6.x">
+            - UI (css) fixes
+        </release>
+        <release version="2.3.0" date="2015-05-13" min="2.3" max="2.6.x">
+            - Added support for svg
+            - Do not request any file if there is already an image in the link
+        </release>
+        <release version="2.2" date="2014-07-22" min="2.3" max="2.4">
+            - Compatibility for custom url: assets are now loaded using full absolute url
+            - Support for Association Drawer
+        </release>
+        <release version="2.1" date="2012-11-27" min="2.3" max="2.4">
+            - Compatibility with multilingual fields (more than one file/link)
+        </release>
+        <release version="2.0" date="2012-11-27" min="2.3" max="2.4">
+            - Added a Image Preview Settings field :
+            It is now possible to customize how images are previewed.
+            You can change those settings by adding one or more `Image Preview Settings` field to you section.
+            - Minor UI updates
+        </release>
+        <release version="1.1" date="2012-07-17" min="2.3" max="2.3.6">
+            - Compatibility with Symphony 2.3
+        </release>
+        <release version="1.0" date="2011-06-13" min="2.2" max="2.2.5">
+            - Initial release
+        </release>
+    </releases>
+</extension>

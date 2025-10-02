@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<extension id="register_php_functions" status="released" xmlns="http://symphony-cms.com/schemas/extension/1.0">
+    <name>Register PHP Functions</name>
+    <description>Register PHP functions like 'rawurlencode' to access them in the XSLT template.</description>
+    <repo type="github"/>
+    <types>
+        <type>Other</type>
+    </types>
+    <authors>
+        <author>
+            <name github="sym8-io">Sym8</name>
+            <website>https://sym8.io</website>
+        </author>
+    </authors>
+    <releases>
+        <release version="1.0.0" date="2025-06-15" min="2.7.x"/>
+    </releases>
+</extension>
